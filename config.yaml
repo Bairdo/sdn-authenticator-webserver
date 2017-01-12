@@ -1,0 +1,10 @@
+---
+controllerIP: 10.0.0.10
+controllerHTTPPort: 8080
+
+radiusIP: 10.0.0.11
+radiusPort: 1812
+radiusAcctPort: 1813
+radiusSecret: testing123
+
+radiusAuthentication: EAPMSCHAPv2

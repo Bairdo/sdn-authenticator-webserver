@@ -1,0 +1,8 @@
+
+Captive Portal webserver for the https://github.com/Bairdo/sdn-authenticator project.
+
+This replaces https://github.com/Bairdo/CapFlow-webserver.
+
+config.yaml contains possible configuration details.
+
+RADIUS Authentications methods MSHCAPv2, MSCHAPv1, CHAP, EAPMD5, EAPMSCHAPv2, PAP, EAPTLS, EAPTTLS, PEAP can be used thanks to jradius.
