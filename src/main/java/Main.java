@@ -37,7 +37,6 @@ import java.util.Map;
 import static spark.Spark.get;
 import static spark.Spark.post;
 import static spark.SparkBase.port;
-import static spark.SparkBase.staticFileLocation;
 
 
 public class Main {
