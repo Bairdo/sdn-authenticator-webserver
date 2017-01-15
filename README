@@ -12,5 +12,7 @@ Uses maven with the following libraries:
 - jradius (RADIUS)
 - jackson (json & yaml)
 - spark web framework
+- velocity (template engine for webpage)
 - unirest (http client)
 - bouncy castle (crypto library)
+- lombok (generates getters with annotations)

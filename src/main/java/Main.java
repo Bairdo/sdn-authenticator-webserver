@@ -7,6 +7,7 @@ import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 import net.jradius.client.RadiusClient;
 import net.jradius.client.auth.*;
+import net.jradius.dictionary.*;
 import net.jradius.exception.RadiusException;
 import net.jradius.exception.UnknownAttributeException;
 import net.jradius.packet.AccessAccept;
@@ -14,22 +15,19 @@ import net.jradius.packet.AccessRequest;
 import net.jradius.packet.RadiusRequest;
 import net.jradius.packet.RadiusResponse;
 import net.jradius.packet.attribute.AttributeFactory;
-import net.jradius.dictionary.Attr_NASPort;
-import net.jradius.dictionary.Attr_NASPortType;
-import net.jradius.dictionary.Attr_ReplyMessage;
-import net.jradius.dictionary.Attr_UserName;
-import net.jradius.dictionary.Attr_UserPassword;
-
 import net.jradius.packet.attribute.AttributeList;
+import org.apache.log4j.spi.LoggerFactory;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.slf4j.Logger;
 import spark.ModelAndView;
 import spark.template.velocity.VelocityTemplateEngine;
 
-import static spark.Spark.*;
-import static spark.SparkBase.staticFileLocation;
-
-import java.io.*;
-
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.security.NoSuchAlgorithmException;
@@ -37,18 +35,27 @@ import java.security.Security;
 import java.util.HashMap;
 import java.util.Map;
 
+import static spark.Spark.get;
+import static spark.Spark.post;
+import static spark.SparkBase.staticFileLocation;
+
 
 public class Main {
 
+    static final org.apache.logging.log4j.Logger logger = LogManager.getFormatterLogger(Main.class);
+
     public static void main(String[] args) {
+
+
+
         Config config;
         try {
             config = Config.BuildFromFile(args[0]);
-        }catch (IllegalArgumentException e){
-            e.printStackTrace();
+        } catch (IllegalArgumentException e) {
+            // should of already printed the error, so just quit.
             return;
         } catch (IOException e) {
-            System.err.printf("Unable to read config file %s", args[0]);
+            logger.error("Unable to read config file %s", args[0]);
             return;
         }
 
@@ -56,9 +63,8 @@ public class Main {
         staticFileLocation("/public");
 
         post("/auth", (req, res) -> {
-            String username = "host110user";//req.queryParams("username");
-            String password = "host110pass"; //req.queryParams("password");
-
+            String username = req.queryParams("username");
+            String password = req.queryParams("password");
 
 
             String redirect = req.queryParams("redirect");
@@ -88,7 +94,7 @@ public class Main {
 
         }, new VelocityTemplateEngine());
 
-        get("/logout", (req, res)->{
+        get("/logout", (req, res) -> {
             return getLogoutHTML();
         });
 
@@ -138,7 +144,7 @@ public class Main {
                     .asString();
 
             if (response.getStatus() != 200) {
-                System.err.printf("Http response: %d, body: %s", response.getStatus(), response.getBody());
+                logger.warn("Http response auth request for ip='%s' user='%s': res.status='%d', body='%s'", ip, username, response.getStatus(), response.getBody());
             }
         } catch (UnirestException e) {
             e.printStackTrace();
@@ -156,7 +162,7 @@ public class Main {
                     .asString();
 
             if (response.getStatus() != 200) {
-                System.err.printf("Http response: %d, body: %s", response.getStatus(), response.getBody());
+                logger.warn("Http response deauth request for ip='%s' user='%s': res.status='%d', body='%s'", ip, "NULL", response.getStatus(), response.getBody());
             }
         } catch (UnirestException e) {
             e.printStackTrace();
@@ -164,83 +170,74 @@ public class Main {
     }
 
 
-    private static int doRadius(Config config, String username, String password){
-       try{
+    private static int doRadius(Config config, String username, String password) {
+        try {
 
-           AttributeFactory.loadAttributeDictionary("net.jradius.dictionary.AttributeDictionaryImpl");
+            AttributeFactory.loadAttributeDictionary("net.jradius.dictionary.AttributeDictionaryImpl");
 
-           InetAddress host = InetAddress.getByName(config.getRadiusIP());
-           RadiusClient rc = new RadiusClient(host, config.getRadiusSecret(), config.getRadiusPort(), config.getRadiusAcctPort(), 1000);
+            InetAddress host = InetAddress.getByName(config.getRadiusIP());
+            RadiusClient rc = new RadiusClient(host, config.getRadiusSecret(), config.getRadiusPort(), config.getRadiusAcctPort(), 1000);
 
-           AttributeList attrs = new AttributeList();
-           attrs.add(new Attr_UserName(username));
-           attrs.add(new Attr_NASPortType(Attr_NASPortType.Wireless80211));
-           attrs.add(new Attr_NASPort(new Long(1)));
+            AttributeList attrs = new AttributeList();
+            attrs.add(new Attr_UserName(username));
+            attrs.add(new Attr_NASPortType(Attr_NASPortType.Wireless80211));
+            attrs.add(new Attr_NASPort(new Long(1)));
 
-           RadiusRequest request = new AccessRequest(rc, attrs);
-           request.addAttribute(new Attr_UserPassword(password));
+            RadiusRequest request = new AccessRequest(rc, attrs);
+            request.addAttribute(new Attr_UserPassword(password));
 
-           System.out.println("Sending:\n" + request.toString());
-           System.out.println("to:\n" + rc.toString());
+            logger.debug("Sending: %s", request.toString());
+            logger.debug("to:\n", rc.toString());
 
-           RadiusAuthenticator authenticator;
+            RadiusAuthenticator authenticator;
 
-           if (config.getRadiusAuthentication().equals(Config.AuthenticationTypes.CHAP)){
-               authenticator = new CHAPAuthenticator();
-           } else if (config.getRadiusAuthentication().equals(Config.AuthenticationTypes.EAPMD5)){
-               authenticator = new EAPMD5Authenticator();
-           } else if (config.getRadiusAuthentication().equals(Config.AuthenticationTypes.EAPMSCHAPv2)){
-               authenticator = new EAPMSCHAPv2Authenticator();
-           } else if (config.getRadiusAuthentication().equals(Config.AuthenticationTypes.MSCHAPv1)){
-               authenticator = new MSCHAPv1Authenticator();
-           } else if (config.getRadiusAuthentication().equals(Config.AuthenticationTypes.MSCHAPv2)){
-               authenticator = new MSCHAPv2Authenticator();
-           } else if (config.getRadiusAuthentication().equals(Config.AuthenticationTypes.PAP)){
-               authenticator = new PAPAuthenticator();
-           }
-           // jradius-extended methods
-           else if (config.getRadiusAuthentication().equals(Config.AuthenticationTypes.EAPTLS)){
-               authenticator = new MSCHAPv1Authenticator();
-           } else if (config.getRadiusAuthentication().equals(Config.AuthenticationTypes.EAPTTLS)){
-               authenticator = new MSCHAPv2Authenticator();
-           } else if (config.getRadiusAuthentication().equals(Config.AuthenticationTypes.PEAP)){
-               authenticator = new PAPAuthenticator();
-           } else {
-               // this should never ever happen, as it should be caught by the config file reader
-               System.err.println("Configuration file did not specify an authentication type to use," +
-                       " and has been detected when doing RADIUS. Config.java probably has an error.");
-               System.exit(1);
-               // This return is needed so the compiler doesn't whinge about 'authenticator' not being initialized,
-               // even though the return statement and also the rc.authenticate call will never be hit.
-               return -1;
-           }
+            if (config.getRadiusAuthentication().equals(Config.AuthenticationTypes.CHAP)) {
+                authenticator = new CHAPAuthenticator();
+            } else if (config.getRadiusAuthentication().equals(Config.AuthenticationTypes.EAPMD5)) {
+                authenticator = new EAPMD5Authenticator();
+            } else if (config.getRadiusAuthentication().equals(Config.AuthenticationTypes.EAPMSCHAPv2)) {
+                authenticator = new EAPMSCHAPv2Authenticator();
+            } else if (config.getRadiusAuthentication().equals(Config.AuthenticationTypes.MSCHAPv1)) {
+                authenticator = new MSCHAPv1Authenticator();
+            } else if (config.getRadiusAuthentication().equals(Config.AuthenticationTypes.MSCHAPv2)) {
+                authenticator = new MSCHAPv2Authenticator();
+            } else if (config.getRadiusAuthentication().equals(Config.AuthenticationTypes.PAP)) {
+                authenticator = new PAPAuthenticator();
+            }
+            // jradius-extended methods
+            else if (config.getRadiusAuthentication().equals(Config.AuthenticationTypes.EAPTLS)) {
+                authenticator = new EAPTLSAuthenticator();
+            } else if (config.getRadiusAuthentication().equals(Config.AuthenticationTypes.EAPTTLS)) {
+                authenticator = new EAPTTLSAuthenticator();
+            } else if (config.getRadiusAuthentication().equals(Config.AuthenticationTypes.PEAP)) {
+                authenticator = new PEAPAuthenticator();
+            } else {
+                // this should never ever happen, as it should be caught by the config file reader
+                logger.error("Configuration file did not specify an authentication type to use, and has been detected when attempting to do RADIUS. and should have been caught in Config.java but looks like it has an error.");
+                System.exit(1);
+                // This return is needed so the compiler doesn't whinge about 'authenticator' not being initialized,
+                // even though the return statement and also the rc.authenticate call will never be hit.
+                return -1;
+            }
 
-           RadiusResponse reply = rc.authenticate((AccessRequest) request, authenticator, 5);
+            RadiusResponse reply = rc.authenticate((AccessRequest) request, authenticator, 5);
 
-           System.out.println("Recieved:\n" + reply.toString());
+            logger.debug("Recieved:\n" + reply.toString());
 
-           boolean isAuthenticated = (reply instanceof AccessAccept);
+            boolean isAuthenticated = (reply instanceof AccessAccept);
 
-           String replyMessage = (String)reply.getAttributeValue(Attr_ReplyMessage.TYPE);
+            String replyMessage = (String) reply.getAttributeValue(Attr_ReplyMessage.TYPE);
 
-           if (replyMessage != null){
-               System.out.println("Reply Message: " + replyMessage);
-           }
+            if (replyMessage != null) {
+                logger.debug("Reply Message: " + replyMessage);
+            }
 
-           if (!isAuthenticated) return 0;
+            if (!isAuthenticated) return 0;
 
-           return 1;
-       } catch (UnknownHostException e) {
-           e.printStackTrace();
-       } catch (IOException e) {
-           e.printStackTrace();
-       } catch (NoSuchAlgorithmException e) {
-           e.printStackTrace();
-       } catch (UnknownAttributeException e) {
-           e.printStackTrace();
-       } catch (RadiusException e) {
-           e.printStackTrace();
-       }
+            return 1;
+        } catch (IOException | NoSuchAlgorithmException | RadiusException e) {
+            logger.error(e);
+        }
         return -1;
     }
 

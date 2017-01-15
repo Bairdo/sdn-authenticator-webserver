@@ -17,6 +17,31 @@
                     <target>1.8</target>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <filters>
+                        <filter>
+                            <artifact>*:*</artifact>
+                            <excludes>
+                                <exclude>META-INF/*.SF</exclude>
+                                <exclude>META-INF/*.DSA</exclude>
+                                <exclude>META-INF/*.RSA</exclude>
+                            </excludes>
+                        </filter>
+                    </filters>
+                    <finalName>uber-${artifactId}-${version}</finalName>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
@@ -26,28 +51,12 @@
             <artifactId>spark-core</artifactId>
             <version>2.1</version>
         </dependency>
-
         <dependency>
             <groupId>com.sparkjava</groupId>
             <artifactId>spark-template-velocity</artifactId>
             <version>2.3</version>
         </dependency>
-        <dependency>
-            <groupId>net.jradius</groupId>
-            <artifactId>jradius-core</artifactId>
-            <version>1.1.5</version>
-        </dependency>
-        <dependency>
-            <groupId>net.jradius</groupId>
-            <artifactId>jradius-dictionary</artifactId>
-            <version>1.1.5</version>
-        </dependency>
 
-        <dependency>
-            <groupId>net.jradius</groupId>
-            <artifactId>jradius-extras</artifactId>
-            <version>1.1.5</version>
-        </dependency>
 
         <dependency>
             <groupId>net.jradius</groupId>
@@ -78,17 +87,27 @@
         </dependency>
 
         <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>LATEST</version>
-        </dependency>
-
-        <dependency>
             <groupId>com.mashape.unirest</groupId>
             <artifactId>unirest-java</artifactId>
             <version>1.4.9</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.16.12</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+            <version>2.7</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>2.7</version>
+        </dependency>
     </dependencies>
 
 </project>
