@@ -7,6 +7,9 @@ config.yaml contains possible configuration details.
 
 RADIUS Authentications methods MSHCAPv2, MSCHAPv1, CHAP, EAPMD5, EAPMSCHAPv2, PAP, EAPTLS, EAPTTLS, PEAP can be used thanks to jradius.
 
+To run:
+java -cp target/uber-captive-portal-webserver-1.0-SNAPSHOT.jar Main config.yaml
+
 
 Uses maven with the following libraries:
 - jradius (RADIUS)

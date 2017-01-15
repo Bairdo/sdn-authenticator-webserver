@@ -1,8 +1,9 @@
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import lombok.Data;
+
 import lombok.Getter;
 import lombok.ToString;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -15,7 +16,7 @@ import java.net.UnknownHostException;
 /**
  * Created by bairdmich on 12/01/17.
  */
-public @Getter
+public @Getter @ToString(exclude ="logger")
 class Config {
 
 
@@ -47,6 +48,8 @@ static  {
     private int radiusAcctPort = 1813;
     private String radiusSecret;
     private String radiusAuthentication;
+
+    private int webserverHTTPPort;
 
     private static boolean isValidIPAddress(String ip){
         try {
@@ -110,6 +113,10 @@ static  {
                     config.radiusAuthentication);
             logger.error(message);
             throw new IllegalArgumentException(message);
+        }
+        if (config.webserverHTTPPort < MIN_PORT_NUMBER || config.webserverHTTPPort > MAX_PORT_NUMBER){
+            logger.error("Field: %s must be a valid TCP port number %d - %d. was: %d", "webserverHTTPPort", MIN_PORT_NUMBER, MAX_PORT_NUMBER, config.webserverHTTPPort);
+            throw new IllegalArgumentException("webserverHTTPPort field out of range: " + config.controllerHTTPPort);
         }
         System.out.println(config.toString());
         return config;

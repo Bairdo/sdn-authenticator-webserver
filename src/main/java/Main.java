@@ -5,22 +5,22 @@
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
+
 import net.jradius.client.RadiusClient;
 import net.jradius.client.auth.*;
 import net.jradius.dictionary.*;
 import net.jradius.exception.RadiusException;
-import net.jradius.exception.UnknownAttributeException;
 import net.jradius.packet.AccessAccept;
 import net.jradius.packet.AccessRequest;
 import net.jradius.packet.RadiusRequest;
 import net.jradius.packet.RadiusResponse;
 import net.jradius.packet.attribute.AttributeFactory;
 import net.jradius.packet.attribute.AttributeList;
-import org.apache.log4j.spi.LoggerFactory;
-import org.apache.logging.log4j.Level;
+
 import org.apache.logging.log4j.LogManager;
+
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.slf4j.Logger;
+
 import spark.ModelAndView;
 import spark.template.velocity.VelocityTemplateEngine;
 
@@ -29,7 +29,6 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Security;
 import java.util.HashMap;
@@ -37,6 +36,7 @@ import java.util.Map;
 
 import static spark.Spark.get;
 import static spark.Spark.post;
+import static spark.SparkBase.port;
 import static spark.SparkBase.staticFileLocation;
 
 
@@ -60,7 +60,8 @@ public class Main {
         }
 
         Security.addProvider(new BouncyCastleProvider());
-        staticFileLocation("/public");
+
+        port(config.getWebserverHTTPPort());
 
         post("/auth", (req, res) -> {
             String username = req.queryParams("username");
