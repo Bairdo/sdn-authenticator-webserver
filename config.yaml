@@ -8,3 +8,5 @@ radiusAcctPort: 1813
 radiusSecret: testing123
 
 radiusAuthentication: EAPMSCHAPv2
+
+webserverHTTPPort: 80
