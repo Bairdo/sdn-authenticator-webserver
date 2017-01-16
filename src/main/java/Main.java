@@ -21,6 +21,7 @@ import org.apache.logging.log4j.LogManager;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
+import org.json.JSONObject;
 import spark.ModelAndView;
 import spark.template.velocity.VelocityTemplateEngine;
 
@@ -35,6 +36,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static spark.Spark.get;
+import static spark.Spark.head;
 import static spark.Spark.post;
 import static spark.SparkBase.port;
 
@@ -135,12 +137,18 @@ public class Main {
 
     private static void sendAuthToController(Config config, String ip, String username) {
         try {
-            HttpResponse<String> response = Unirest.post("http://{ip}:{port}/v1.0/authenticate/ip={userip}&user={user}")
+            Map<String, String> map = new HashMap<>();
+            map.put("ip", ip);
+            map.put("user", username);
+
+            HttpResponse<String> response = Unirest.post("http://{ip}:{port}/v1.1/authenticate/auth")
                     .routeParam("ip", config.getControllerIP())
                     .routeParam("port", String.valueOf(config.getControllerHTTPPort()))
-                    .header("Content-Type", "application/x-www-form-urlencoded")
-                    .routeParam("userip", ip)
-                    .routeParam("user", username)
+                    //.header("Content-Type", "application/x-www-form-urlencoded")
+                    //.routeParam("userip", ip)
+                    //.routeParam("user", "NULL")
+                    .header("Content-Type", "application/json")
+                    .body(new JSONObject(map))
                     .asString();
 
             if (response.getStatus() != 200) {
@@ -153,12 +161,19 @@ public class Main {
 
     private static void sendDeauthToController(Config config, String ip) {
         try {
-            HttpResponse<String> response = Unirest.delete("http://{ip}:{port}/v1.0/authenticate/ip={userip}&user={user}")
+
+            Map<String, String> map = new HashMap<>();
+            map.put("ip", ip);
+            map.put("user", null);
+
+            HttpResponse<String> response = Unirest.delete("http://{ip}:{port}/v1.1/authenticate/auth")
                     .routeParam("ip", config.getControllerIP())
                     .routeParam("port", String.valueOf(config.getControllerHTTPPort()))
-                    .header("Content-Type", "application/x-www-form-urlencoded")
-                    .routeParam("userip", ip)
-                    .routeParam("user", "NULL")
+                    //.header("Content-Type", "application/x-www-form-urlencoded")
+                    //.routeParam("userip", ip)
+                    //.routeParam("user", "NULL")
+                    .header("Content-Type", "application/json")
+                    .body(new JSONObject(map))
                     .asString();
 
             if (response.getStatus() != 200) {
