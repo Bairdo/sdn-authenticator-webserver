@@ -104,7 +104,7 @@ public class Main {
             return getLogoutHTML();
         });
 
-        post("/loggedout", (req, res) -> {
+        get("/loggedout", (req, res) -> {
             BufferedReader br = new BufferedReader(new FileReader("goodbye.html"));
             StringBuffer sb = new StringBuffer();
             br.lines().forEach(sb::append);
