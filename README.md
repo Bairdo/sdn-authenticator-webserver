@@ -4,8 +4,8 @@ Captive Portal webserver for the https://github.com/Bairdo/sdn-authenticator pro
 This replaces https://github.com/Bairdo/CapFlow-webserver.
 
 #Configuration
-[config.yaml](https://github.com/Bairdo/sdn-authenticator-webserver/blob/v0.2.0/config.yaml) contains an example configuration file
-The following fields are usable (where the field has a value, it is optional, otherwise it must be defined in the configuration file).
+[config.yaml](https://github.com/Bairdo/sdn-authenticator-webserver/blob/v0.2.0/config.yaml) contains an example configuration file.
+The following fields are usable (where the field has a value it is optional, otherwise it must be defined in the configuration file).
 
 Field | Default Value | Range
 --------- | ------------- | ----------
@@ -23,8 +23,6 @@ webserverHTTPPort is the TCP port for the server to listen on.
 Ensure your RADIUS server is configured for the correct authentication method.
 
 
-RADIUS Authentications methods MSHCAPv2, MSCHAPv1, CHAP, EAPMD5, EAPMSCHAPv2, PAP, EAPTLS, EAPTTLS, PEAP can be used thanks to jradius.
-
 #Run:
 
 jre8 is required
@@ -37,7 +35,7 @@ Create the configuration file.
 
 ##usage:
 '''
-java -cp <JAR_FILE.jar> Main <CONFIGURATION.yaml>
+java -cp \<JAR_FILE.jar> Main \<CONFIGURATION.yaml>
 '''
 ##therefore:
 '''
