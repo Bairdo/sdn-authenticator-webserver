@@ -11,8 +11,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-
-
+import java.net.NetworkInterface;
+import java.net.SocketException;
 /**
  * Created by bairdmich on 12/01/17.
  */
@@ -51,6 +51,8 @@ static  {
 
     private int webserverHTTPPort;
 
+    private String arpIFace;
+
     private static boolean isValidIPAddress(String ip){
         try {
             InetAddress.getByName(ip);
@@ -60,11 +62,27 @@ static  {
         }
         return false;
     }
+    private static boolean isValidIFace(String iface){
+        try{
+            if (NetworkInterface.getByName(iface) == null){
+                return false;
+            }
+        } catch(SocketException e){
+            // occurs if i/o error occurs
+            return false;
+        }
+        return true;
+    }
 
     public static Config BuildFromFile(String filename) throws IOException, IllegalArgumentException {
 
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
         Config config = mapper.readValue(new File(filename), Config.class);
+
+        if(config.arpIFace == null || !isValidIFace(config.arpIFace)){
+            logger.error("Field: %s must specify a network interface. was: %s", "arpIFace", config.arpIFace);
+            throw new IllegalArgumentException("must specify valid arpIFace field");
+        }
 
         if (config.controllerIP == null || !isValidIPAddress(config.controllerIP)) {
             // TODO verify if it is a valid IP address or hostname.
