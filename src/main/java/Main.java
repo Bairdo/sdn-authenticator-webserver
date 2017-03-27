@@ -29,11 +29,13 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+
 import java.net.InetAddress;
 import java.security.NoSuchAlgorithmException;
 import java.security.Security;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Scanner;
 
 import static spark.Spark.get;
 import static spark.Spark.head;
@@ -47,8 +49,6 @@ public class Main {
 
     public static void main(String[] args) {
 
-
-
         Config config;
         try {
             config = Config.BuildFromFile(args[0]);
@@ -56,6 +56,7 @@ public class Main {
             // should of already printed the error, so just quit.
             return;
         } catch (IOException e) {
+            logger.error(e);
             logger.error("Unable to read config file %s", args[0]);
             return;
         }
@@ -66,15 +67,18 @@ public class Main {
 
         post("/auth", (req, res) -> {
             String username = req.queryParams("username");
-            String password = req.queryParams("password");
-
+            String password = req.queryParams("password"); 
 
             String redirect = req.queryParams("redirect");
 
             if (doRadius(config, username, password) == 1) {
-                sendAuthToController(config, req.ip(), username);
-                return "Authenticated. " + "Redirecting to <a href=" + redirect + ">"
-                        + redirect + "in 10 seconds." + "<meta http-equiv='refresh' content='10;" + redirect + "'>";
+                if (sendAuthToController(config, req.ip(), username)){
+                    return "Authenticated. " + "Redirecting to <a href=" + redirect + ">"
+                            + redirect + "in 10 seconds." + "<meta http-equiv='refresh' content='10;" + redirect + "'>";
+                }
+                res.redirect("/login?redirect=" + redirect + "&message=Internal%20Server%20Error%20Unable%20to%20Login");
+                res.status(500);
+		return null;
             }
 
             res.redirect("/login?redirect=" + redirect + "&message=Incorrect%20Username%20or%20Password");
@@ -102,6 +106,14 @@ public class Main {
 
         get("/logoff", (req, res) -> {
             return getLogoutHTML();
+        });
+
+        get("/loggedout", (req, res) -> {
+            BufferedReader br = new BufferedReader(new FileReader("goodbye.html"));
+            StringBuffer sb = new StringBuffer();
+            br.lines().forEach(sb::append);
+            sendDeauthToController(config, req.ip());
+            return sb.toString();
         });
 
         post("/loggedout", (req, res) -> {
@@ -134,12 +146,44 @@ public class Main {
         return sb.toString();
     }
 
+    private static String getMacFromIP(String arp_iface, String ip){
+	logger.debug("getMacFrom IP, %d", System.currentTimeMillis());
+	ArpHelper arpHelper = new ArpHelper();
+        try{
+            String arpTable = arpHelper.getARPTable(arp_iface);
+            logger.debug("got arp table %d", System.currentTimeMillis());
+            logger.debug("arptable %s", arpTable);
+            for(String line : arpTable.split("\\n")){
+                logger.debug("line", line);
+                String[] tokens = line.split("\\s+");
+                logger.debug("tokens: %s, %s, %s, %s", tokens[0], tokens[1], tokens[2], tokens[3]);
+                if (ip.equals(tokens[0])){
+                    logger.debug("Found arp entry ip: %s. mac %s", ip, tokens[2]);
+                    logger.debug("found arp %d", System.currentTimeMillis());
+                    return tokens[2];
+                }
+            }
+        } catch (IOException e ){
+            logger.warn("Exception while getting info from arp. msg: %s", e.getMessage());
+        }
+        logger.debug("find arp %d", System.currentTimeMillis());
+        logger.warn("unable to find corresponding arp entry for ip: %s", ip);
+        return null;
+    }
 
-    private static void sendAuthToController(Config config, String ip, String username) {
+    /**
+    * @return true when successfully sent message to controller. false otherwise (so probably a good idea to let client know they are not authenticated).
+    */
+    private static boolean sendAuthToController(Config config, String ip, String username) {
+        String mac = getMacFromIP(config.getArpIFace(), ip);
+        if (mac == null){
+            return false;
+	}
         try {
             Map<String, String> map = new HashMap<>();
             map.put("ip", ip);
             map.put("user", username);
+            map.put("mac", mac);
 
             HttpResponse<String> response = Unirest.post("http://{ip}:{port}/v1.1/authenticate/auth")
                     .routeParam("ip", config.getControllerIP())
@@ -153,18 +197,24 @@ public class Main {
 
             if (response.getStatus() != 200) {
                 logger.warn("Http response auth request for ip='%s' user='%s': res.status='%d', body='%s'", ip, username, response.getStatus(), response.getBody());
+                return false;
             }
         } catch (UnirestException e) {
             e.printStackTrace();
+            return false;
         }
+        return true;
     }
 
     private static void sendDeauthToController(Config config, String ip) {
+
+        String mac = getMacFromIP(config.getArpIFace(), ip);
         try {
 
             Map<String, String> map = new HashMap<>();
             map.put("ip", ip);
             map.put("user", null);
+            map.put("mac", mac);
 
             HttpResponse<String> response = Unirest.delete("http://{ip}:{port}/v1.1/authenticate/auth")
                     .routeParam("ip", config.getControllerIP())
